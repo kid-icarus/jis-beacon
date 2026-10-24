@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JIS かなタイピング · 触鍵式キーボード練習</title>
+<style>
+  :root{
+    --bg:#f6f4ef; --panel:#ffffff; --ink:#2b2925; --muted:#8b867c;
+    --line:#e4e0d6; --accent:#c94f3d; --accent-2:#2f6f5e;
+    --ok:#3a8f6a; --err:#d64545; --key:#efece4; --key-ink:#4a463f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",-apple-system,"Segoe UI",system-ui,sans-serif;
+       background:var(--bg);color:var(--ink);min-height:100vh;
+       display:flex;flex-direction:column;align-items:center;padding:24px 20px 46px}
+  .wrap{width:100%;max-width:880px}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+  h1{font-size:20px;margin:0;letter-spacing:.4px}
+  h1 .jp{color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px}
+
+  .btn{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:14px;color:var(--ink);cursor:pointer;transition:.12s}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.primary:hover{background:#b84333}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  .statgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 0 16px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 12px}
+  .stat .lbl{font-size:10px;color:var(--muted);letter-spacing:.3px}
+  .stat .val{font-size:19px;font-weight:600;margin-top:1px;font-variant-numeric:tabular-nums}
+  .stat .val.err{color:var(--err)} .stat .val.ok{color:var(--ok)}
+  .progress{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin-bottom:16px}
+  .progress i{display:block;height:100%;width:0;background:var(--accent-2);transition:width .25s}
+  .beatline{height:6px;border-radius:4px;background:var(--line);margin:0 0 10px;overflow:hidden}
+  .beatline i{display:block;height:100%;width:0;background:var(--accent);transition:width .1s}
+
+  .target{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px;margin-bottom:12px;
+          text-align:center;min-height:96px;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;line-height:1.4}
+  .tchar{font-size:30px;color:#cfcabd;transition:.1s;padding:0 1px}
+  .tchar.done{color:#7a756b}
+  .tchar.cur{color:var(--ink);background:rgba(201,79,61,.12);border-radius:6px;font-weight:600}
+  .tchar.cur.err{color:var(--err);background:rgba(214,69,69,.15)}
+  .tchar.hidden{opacity:0;pointer-events:none}
+  .hint{color:var(--muted);font-size:13px;margin-top:6px;text-align:center}
+
+  .kb{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 14px 8px;margin-bottom:12px}
+  .kbrow{display:flex;justify-content:center;gap:6px;margin-bottom:6px}
+  .key{width:50px;height:50px;border-radius:9px;background:var(--key);border:1px solid var(--line);
+       display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;transition:.12s;user-select:none}
+  .key .latin{font-size:12px;color:var(--key-ink);font-weight:600}
+  .key .kana{font-size:16px;color:#9a958a}
+  .key.active{background:var(--accent-2);border-color:var(--accent-2);transform:translateY(-2px);box-shadow:0 3px 8px rgba(0,0,0,.15)}
+  .key.active .latin,.key.active .kana{color:#fff}
+  .key.wrong{animation:shake .3s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  .key .fingerdot{position:absolute;bottom:4px;width:8px;height:8px;border-radius:50%}
+  .key.home{outline:2px solid rgba(0,0,0,.06)}
+  .fingerlab{position:absolute;top:3px;right:5px;font-size:9px;color:var(--muted);font-weight:600}
+  .key.learned{box-shadow:inset 0 0 0 2px rgba(47,111,94,.35)}
+  .kbnotes{text-align:center;color:var(--muted);font-size:12px;padding:0 0 8px}
+
+  /* home / ladder */
+  .cards{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .card h3{margin:0 0 10px;font-size:15px}
+  .ladder{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+  .ladder h3{margin:0 0 8px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  .stageb{display:flex;gap:8px;align-items:center;padding:7px 9px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:.12s}
+  .stageb:hover{border-color:var(--accent)}
+  .stageb.locked{opacity:.45;cursor:not-allowed}
+  .stageb.done{border-color:var(--accent-2);background:rgba(47,111,94,.06)}
+  .stageb .num{width:22px;text-align:center;font-weight:700;color:var(--muted)}
+  .stageb .nm{flex:1;font-size:14px}
+  .stageb .tag{font-size:11px;color:var(--muted)}
+  .stageb .keysmini{color:var(--accent);font-weight:600;margin-right:6px}
+  .stageb .done-mark{color:var(--accent-2);font-weight:700}
+  .drillb{background:var(--key);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;cursor:pointer;transition:.12s}
+  .drillb:hover{border-color:var(--accent)}
+
+  table.prog{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.prog td,table.prog th{padding:4px 6px;text-align:right;border-bottom:1px solid var(--line)}
+  table.prog th{color:var(--muted);font-weight:500}
+
+  .results{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;text-align:center}
+  .results h2{margin:0 0 2px}
+  .big{font-size:50px;font-weight:700;color:var(--accent-2);margin:6px 0 0}
+  .resgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px auto;max-width:640px}
+  .verdict{color:var(--muted);margin:4px 0 14px}
+  .meter{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px auto;max-width:640px}
+  .meter i{display:block;height:100%;background:var(--accent-2);transition:width .4s}
+  .banner{background:rgba(47,111,94,.1);border:1px solid rgba(47,111,94,.3);color:var(--accent-2);border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:12px;text-align:center}
+  .toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+  .footer{color:var(--muted);font-size:12px;text-align:center;margin-top:10px}
+  .mobile{display:none}
+  @media(max-width:760px){.cards{grid-template-columns:1fr}.statgrid{grid-template-columns:repeat(3,1fr)}.key{width:40px;height:43px}.key .latin{font-size:10px}.key .kana{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>JIS <span class="jp">かな</span> タイピング <span style="font-weight:400;color:var(--muted);font-size:14px">触鍵式・Mavis式</span></h1>
+    <div class="sub" id="crumb"></div>
+  </header>
+
+  <!-- ============ HOME ============ -->
+  <div id="homeView">
+    <div class="banner">
+      1組ずつキーを覚えて、正確さが先。各ステージの練習で <b>正答率95%以上</b> を出すと次のステージが開きます。
+      まずは <b>判定テスト</b> で今の実力を測りましょう。
+    </div>
+    <div class="cards">
+      <div class="card">
+        <h3>ステージ（鍵盤を広げる順）</h3>
+        <div id="ladder"></div>
+      </div>
+      <div class="card">
+        <h3>進み具合と実績</h3>
+        <div id="homeStats"></div>
+        <div style="margin-top:12px" class="row">
+          <button class="btn primary" id="placementBtn">判定テスト</button>
+          <button class="btn" id="freeBtn">自由練習</button>
+        </div>
+        <div style="margin-top:12px" class="row">
+          <label class="toggle"><input type="checkbox" id="tBarrier"> バリア練習（先の文字を隠す）</label>
+          <label class="toggle"><input type="checkbox" id="tMeta"> メトロノーム</label>
+          <label class="toggle"><input type="checkbox" id="tFinger" checked> 指のヒント</label>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h3>スピード推移（CM ／ 正答率）</h3>
+      <div id="graph" style="min-height:120px"></div>
+    </div>
+    <div class="footer">かな入力（かなモード）でタイプ。濁音は「か→゛」、半濁音は「は→゜」、長音「ー」は <b>¥</b> キー。</div>
+  </div>
+
+  <!-- ============ PLACEMENT ============ -->
+  <div id="placeView" style="display:none">
+    <div class="banner">判定テスト：時間無制限。落ち着いて、これだけ打てるか試してください。</div>
+    <div class="target" id="pTarget"></div>
+    <div class="hint" id="pHint"></div>
+    <div class="kb" id="pKb"></div>
+    <div style="text-align:center;margin-top:6px" class="row" style="justify-content:center">
+      <button class="btn ghost" id="pCancel">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- ============ TYPING ============ -->
+  <div id="typingView" style="display:none">
+    <div class="statgrid">
+      <div class="stat"><div class="lbl">速度 CM</div><div class="val" id="cpm">0</div></div>
+      <div class="stat"><div class="lbl">正答率</div><div class="val ok" id="acc">–</div></div>
+      <div class="stat"><div class="lbl">正味スコア</div><div class="val" id="net">0</div></div>
+      <div class="stat"><div class="lbl">ミス</div><div class="val err" id="errs">0</div></div>
+      <div class="stat"><div class="lbl">時間</div><div class="val" id="time">0:00</div></div>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+    <div class="beatline"><i id="metapulse"></i></div>
+    <div class="target" id="target"></div>
+    <div class="hint" id="hint"></div>
+    <div class="kb" id="kb"></div>
+    <div class="kbnotes" id="kbnotes"></div>
+    <div style="text-align:center;margin-top:4px" class="row" style="justify-content:center">
+      <button class="btn" id="restartBtn">もう一度</button>
+      <button class="btn ghost" id="backBtn">一覧へ</button>
+      <button class="btn ghost" id="toggleKb">鍵盤を隠す</button>
+    </div>
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div id="resultsView" style="display:none">
+    <div class="results">
+      <h2 id="resTitle">できました！</h2>
+      <div class="big" id="resBig">0</div>
+      <div class="verdict" id="resVerdict"></div>
+      <div class="meter"><i id="resMeter"></i></div>
+      <div class="resgrid">
+        <div class="stat"><div class="lbl">速度 CM</div><div class="val" id="resCpm">0</div></div>
+        <div class="stat"><div class="lbl">正答率</div><div class="val" id="resAcc">0%</div></div>
+        <div class="stat"><div class="lbl">正味</div><div class="val" id="resNet">0</div></div>
+        <div class="stat"><div class="lbl">ミス</div><div class="val err" id="resErrs">0</div></div>
+      </div>
+      <div class="row" style="justify-content:center">
+        <button class="btn primary" id="againBtn">もう一度</button>
+        <button class="btn" id="nextBtn">次へ</button>
+        <button class="btn ghost" id="resListBtn">一覧へ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= KEY MAP (physical event.code) ================= */
+const K = {
+  "KeyA":{latin:"A",kana:"ち",f:"LP",home:true},"KeyS":{latin:"S",kana:"と",f:"LR",home:true},
+  "KeyD":{latin:"D",kana:"し",f:"LM",home:true},"KeyF":{latin:"F",kana:"は",f:"LI",home:true},
+  "KeyG":{latin:"G",kana:"き",f:"LI",home:true},"KeyH":{latin:"H",kana:"く",f:"RI",home:true},
+  "KeyJ":{latin:"J",kana:"ま",f:"RI",home:true},"KeyK":{latin:"K",kana:"の",f:"RM",home:true},
+  "KeyL":{latin:"L",kana:"り",f:"RR",home:true},"Semicolon":{latin:";",kana:"れ",f:"RP",home:true},
+  "Quote":{latin:":",kana:"け",f:"RP",home:true},
+  "KeyQ":{latin:"Q",kana:"た",f:"LP"},"KeyW":{latin:"W",kana:"て",f:"LR"},"KeyE":{latin:"E",kana:"い",f:"LM"},
+  "KeyR":{latin:"R",kana:"す",f:"LI"},"KeyT":{latin:"T",kana:"か",f:"LI"},"KeyY":{latin:"Y",kana:"ん",f:"RI"},
+  "KeyU":{latin:"U",kana:"な",f:"RI"},"KeyI":{latin:"I",kana:"に",f:"RM"},"KeyO":{latin:"O",kana:"ら",f:"RR"},
+  "KeyP":{latin:"P",kana:"せ",f:"RP"},"BracketLeft":{latin:"@",kana:"゛",f:"RP"},"BracketRight":{latin:"[",kana:"゜",f:"RP"},
+  "Backslash":{latin:"]",kana:"む",f:"RP"},
+  "KeyZ":{latin:"Z",kana:"つ",f:"LP"},"KeyX":{latin:"X",kana:"さ",f:"LR"},"KeyC":{latin:"C",kana:"そ",f:"LM"},
+  "KeyV":{latin:"V",kana:"ひ",f:"LI"},"KeyB":{latin:"B",kana:"こ",f:"LI"},"KeyN":{latin:"N",kana:"み",f:"RI"},
+  "KeyM":{latin:"M",kana:"も",f:"RI"},"Comma":{latin:",",kana:"ね",f:"RM"},"Period":{latin:".",kana:"る",f:"RR"},
+  "Slash":{latin:"/",kana:"め",f:"RP"},"IntlRo":{latin:"\\",kana:"ろ",f:"RP"},
+  "Digit1":{latin:"1",kana:"ぬ",f:"LP"},"Digit2":{latin:"2",kana:"ふ",f:"LR"},"Digit3":{latin:"3",kana:"あ",f:"LM"},
+  "Digit4":{latin:"4",kana:"う",f:"LI"},"Digit5":{latin:"5",kana:"え",f:"LI"},"Digit6":{latin:"6",kana:"お",f:"RI"},
+  "Digit7":{latin:"7",kana:"や",f:"RI"},"Digit8":{latin:"8",kana:"ゆ",f:"RM"},"Digit9":{latin:"9",kana:"よ",f:"RR"},
+  "Digit0":{latin:"0",kana:"わ",f:"RP"},"Minus":{latin:"-",kana:"ほ",f:"RP"},"Equal":{latin:"^",kana:"へ",f:"RP"},
+  "IntlYen":{latin:"¥",kana:"ー",f:"RP"},
+};
+const FC={LP:"#c94f3d",LR:"#d98a3a",LM:"#c9a63a",LI:"#3a9a5e",RI:"#3a7ea6",RM:"#5a5aa8",RR:"#8a4aa8",RP:"#b04a86"};
+const FN={LP:"左小指",LR:"左薬指",LM:"左中指",LI:"左人指",RI:"右人指",RM:"右中指",RR:"右薬指",RP:"右小指"};
+const DAK="BracketLeft",HAN="BracketRight",LONG="IntlYen";
+
+function codeOf(kana){ const c=Object.keys(K).find(x=>K[x].kana===kana); return c||null; }
+function kanaKeys(ch){
+  if(!ch)return null;
+  if(ch==="ー")return[{code:LONG,kana:"ー"}];
+  const vo={"が":"か","ぎ":"き","ぐ":"く","げ":"け","ご":"こ","ざ":"さ","じ":"し","ず":"す","ぜ":"せ","ぞ":"そ",
+            "だ":"た","ぢ":"ち","づ":"つ","で":"て","ど":"と","ば":"は","び":"ひ","ぶ":"ふ","べ":"へ","ぼ":"ほ"};
+  const ha={"ぱ":"は","ぴ":"ひ","ぷ":"ふ","ぺ":"へ","ぽ":"ほ"};
+  const sm={"ゃ":"や","ゅ":"ゆ","ょ":"よ","っ":"つ","ぁ":"あ","ぃ":"い","ぇ":"え","ぉ":"お","ゎ":"わ"};
+  let base=ch,dak=false,han=false;
+  if(vo[ch]){base=vo[ch];dak=true;}else if(ha[ch]){base=ha[ch];han=true;}else if(sm[ch]){base=sm[ch];}
+  const c=codeOf(base); if(!c)return null;
+  const seq=[{code:c,kana:base}];
+  if(dak)seq.push({code:DAK,kana:"゛"});
+  if(han)seq.push({code:HAN,kana:"゜"});
+  return seq;
+}
+
+/* ================= STAGES (one key-pair at a time) ================= */
+const STAGES=[
+ {t:"は・ま（F / J）",k:["KeyF","KeyJ"]},
+ {t:"し・の（D / K）",k:["KeyD","KeyK"]},
+ {t:"と・り（S / L）",k:["KeyS","KeyL"]},
+ {t:"ち・れ（A / ;）",k:["KeyA","Semicolon"]},
+ {t:"き・く（G / H）",k:["KeyG","KeyH"]},
+ {t:"す・な（R / U）",k:["KeyR","KeyU"]},
+ {t:"か・ん（T / Y）",k:["KeyT","KeyY"]},
+ {t:"い・に（E / I）",k:["KeyE","KeyI"]},
+ {t:"て・ら（W / O）",k:["KeyW","KeyO"]},
+ {t:"た・せ（Q / P）",k:["KeyQ","KeyP"]},
+ {t:"ひ・も（V / M）",k:["KeyV","KeyM"]},
+ {t:"こ・み（B / N）",k:["KeyB","KeyN"]},
+ {t:"そ・ね（C / ,）",k:["KeyC","Comma"]},
+ {t:"さ・る（X / .）",k:["KeyX","Period"]},
+ {t:"つ・め（Z / /）",k:["KeyZ","Slash"]},
+ {t:"数字の段",k:["Digit3","Digit4","Digit5","Digit6","Digit7","Digit8","Digit9","Digit0","Digit1","Digit2","Minus"]},
+ {t:"濁音・半濁音・長音",k:["BracketLeft","BracketRight","IntlYen","IntlRo","Equal","Backslash"]},
+];
+
+// base-kana-only words (no voiced) for stages 0-14; voiced words used later
+const WORDS=["はし","くま","ひと","いえ","うみ","かさ","すし","て","とけい","なつ","ねこ","のり","はな","ふね","へや",
+  "ほし","まち","やま","ゆき","よる","そら","たこ","つき","みみ","むし","もり","さかな","しお","あさ","あめ","いぬ",
+  "うま","えき","こえ","わたし","あなた","もも","つくえ","ひみつ","もち","りんご","おか","にわ"];
+const VOICEDWORDS=["ありがとう","かぞく","かぎ","ごはん","さかな","じぶん","でんしゃ","びょういん","ぺん","こくばん","うでどけい","すこし"];
+
+function learnedSet(stageIdx){
+  const s=new Set();
+  for(let i=0;i<=stageIdx;i++)STAGES[i].k.forEach(c=>s.add(K[c].kana));
+  return s;
+}
+function stageKana(stageIdx){ const s=new Set(); STAGES[stageIdx].k.forEach(c=>s.add(K[c].kana)); return [...s]; }
+function availWords(stageIdx, useVoiced){
+  const learned=learnedSet(stageIdx);
+  const pool=useVoiced?WORDS.concat(VOICEDWORDS):WORDS;
+  const voicedChar=["が","ぎ","ぐ","げ","ご","ざ","じ","ず","ぜ","ぞ","だ","ぢ","づ","で","ど","ば","び","ぶ","べ","ぼ","ぱ","ぴ","ぷ","ぺ","ぽ"];
+  return pool.filter(w=>{
+    for(const ch of w){ const ks=kanaKeys(ch); if(!ks)return false;
+      for(const kk of ks){ const ki=K[kk.code]?K[kk.code].kana:null;
+        // allow base always; allow modifier char only if it's a pure base already learned
+        if(kk.code===DAK||kk.code===HAN)continue; // modifier allowed (is ゛/゜ available)
+        if(!learned.has(ki))return false;
+      }
+    }
+    return true;
+  });
+}
+
+function seededShuffle(arr,seed){ const a=arr.slice(); let s=seed; const r=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function buildDrills(stageIdx){
+  const kana=stageKana(stageIdx); const useVoiced=stageIdx>=16;
+  const newStr=kana.join("").repeat(4);
+  // blend: all learned kana tiled to a workable length
+  const learned=[...learnedSet(stageIdx)];
+  const pool=seededShuffle(learned, stageIdx*7+3);
+  let blend=""; while(blend.length<26){ for(const k of pool){blend+=k;} }
+  blend=blend.slice(0,30);
+  const drills=[{name:"新キー",kana:newStr},{name:"混ぜる",kana:blend}];
+  const words=availWords(stageIdx,useVoiced);
+  if(words.length){ drills.push({name:"単語",kana:words.slice(0,6).join("")}); }
+  return drills;
+}
+
+/* ================= PLACEMENT TEST ================= */
+const PLACE=["は","ま","し","の","と","り","ち","れ","き","く","す","な","か","ん","い","に"];
+function startPlacement(){
+  setView("place");
+  pBuildTarget(PLACE.join(""));
+  document.getElementById("pCancel").onclick=()=>{setView("home")};
+}
+let pPos=0,pSub=0,pErrs=0,pTot=0,pStart=null;
+function pBuildTarget(str){
+  pTargets=buildTargets(str); pPos=0;pSub=0;pErrs=0;pTot=0;pStart=null;
+  renderPTarget(); buildKeyboard("pKb");
+}
+function renderPTarget(){
+  const el=document.getElementById("pTarget"); el.innerHTML="";
+  pTargets.forEach((tk,i)=>{const s=document.createElement("span");s.className="tchar";s.textContent=tk.char;
+    if(i<pPos)s.classList.add("done"); if(i===pPos)s.classList.add("cur"); el.appendChild(s);});
+}
+function finishPlacement(){
+  const acc=pTot?Math.round((pTot-pErrs)/pTot*100):0;
+  // recommend stage based on accuracy + which keys got right
+  let rec=0;
+  if(acc>=95)rec=5; if(acc>=98)rec=10; 
+  if(acc>=88&&acc<95)rec=2;
+  save({startStage:rec});
+  alert("判定完了！正答率 "+acc+"%。おすすめの開始ステージ：第"+(rec+1)+"段あたり。");
+  setView("home");
+}
+
+/* ================= TYPING ENGINE ================= */
+let view="home", curStage=-1, curMode="stage", curDrillName="";
+let targets=[],pos=0,sub=0,errs=0,tot=0,startT=null,timerId=null,lastDrillStr="";
+let barrier=false,metronome=false,fingerHint=true,kbVisible=true;
+let pTargets=[];
+let keyErrs={};  // code -> error count (adaptive)
+let metaTimer=null,metaOn=false;
+
+function buildTargets(str){ const t=[]; for(const ch of str){const ks=kanaKeys(ch); if(ks)t.push({char:ch,keys:ks});} return t; }
+
+function setView(v){
+  view=v;
+  ["homeView","placeView","typingView","resultsView"].forEach(id=>{
+    document.getElementById(id).style.display=(id.replace("View","")===v)?"block":"none";
+  });
+  if(v==="home")renderHome();
+}
+
+function startStageDrill(si,drillName){
+  curStage=si; curMode="stage"; curDrillName=drillName;
+  const d=buildDrills(si).find(x=>x.name===drillName);
+  beginDrill(d?d.kana:"");
+}
+function beginDrill(str){
+  lastDrillStr=str;
+  targets=buildTargets(str);pos=0;sub=0;errs=0;tot=0;startT=null;
+  if(timerId)clearInterval(timerId);timerId=null;
+  document.getElementById("crumb").textContent = curMode==="stage"
+    ? ("第"+(curStage+1)+"段 ・ "+STAGES[curStage].t+" ・ "+curDrillName)
+    : (curMode==="placement"?"判定テスト":(curMode==="free"?"自由練習":""));
+  setView("typing"); buildKeyboard("kb"); renderTyping();
+}
+
+function currentExpected(){ if(!targets[pos])return null; return targets[pos].keys[sub]; }
+
+function renderTyping(){
+  const el=document.getElementById("target"); el.innerHTML="";
+  targets.forEach((tk,i)=>{
+    const s=document.createElement("span"); s.className="tchar"; s.textContent=tk.char;
+    if(i<pos)s.classList.add("done");
+    if(i===pos)s.classList.add("cur");
+    if(barrier&&i>pos+2)s.classList.add("hidden");
+    el.appendChild(s);
+  });
+  const exp=currentExpected(); const hint=document.getElementById("hint");
+  if(exp){
+    const info=K[exp.code];
+    const fh=fingerHint?`<span style="color:${FC[info.f]};font-weight:600;margin-left:8px">${FN[info.f]}</span>`:"";
+    hint.innerHTML=`次: <b style="font-size:18px">${exp.kana}</b><span class="pill" style="display:inline-block;background:var(--key);border:1px solid var(--line);border-radius:7px;padding:2px 8px;margin-left:8px;font-weight:600">${info.latin}</span>${fh}`;
+    document.querySelectorAll("#kb .key").forEach(x=>x.classList.remove("active","wrong"));
+    const ak=document.getElementById("key-"+exp.code); if(ak&&kbVisible)ak.classList.add("active");
+  } else hint.innerHTML="";
+  document.getElementById("bar").style.width=(targets.length?pos/targets.length*100:0)+"%";
+  document.getElementById("kb").style.display=kbVisible?"":"none";
+  document.getElementById("kbnotes").textContent=exp?("「"+targets[pos].char+"」の次のキー（"+infoLatin(exp.code)+"）"):"";
+}
+function infoLatin(c){return K[c]?K[c].latin:"";}
+
+function refreshStats(){
+  let cpm=0; if(startT){const m=(Date.now()-startT)/60000;cpm=Math.round(pos/m);}
+  const acc=tot?Math.round((tot-errs)/tot*100):100;
+  document.getElementById("cpm").textContent=cpm;
+  document.getElementById("acc").textContent=acc+"%";
+  document.getElementById("net").textContent=Math.round(cpm*acc/100);
+  document.getElementById("errs").textContent=errs;
+  const secs=startT?Math.floor((Date.now()-startT)/1000):0;
+  document.getElementById("time").textContent=Math.floor(secs/60)+":"+String(secs%60).padStart(2,"0");
+}
+function beginTimer(){ if(!startT){startT=Date.now();timerId=setInterval(refreshStats,250); if(metronome)startMeta();} }
+function startMeta(){ if(metaOn)return; metaOn=true;
+  metaTimer=setInterval(()=>{ const p=document.getElementById("metapulse");
+    if(p){ p.style.width="100%"; setTimeout(()=>{p.style.width="0";},120);} },400); }
+
+/* keydown */
+document.addEventListener("keydown",e=>{
+  if(e.repeat)return;
+  const code=e.code;
+  if(["ShiftLeft","ShiftRight"].includes(code))return;
+  if(view==="typing"){
+    handleDrillKey(code);
+  } else if(view==="place"){
+    handlePlaceKey(code);
+  }
+});
+function handleDrillKey(code){
+  const exp=currentExpected(); if(!exp)return;
+  if(code===exp.code){
+    tot++; beginTimer();
+    const ak=document.getElementById("key-"+code); if(ak)ak.classList.add("active");
+    sub++;
+    if(sub>=targets[pos].keys.length){sub=0;pos++;renderTyping();refreshStats();
+      if(pos>=targets.length)completeDrill();
+    } else renderTyping();
+  } else if(K[code]){
+    tot++;errs++;keyErrs[code]=(keyErrs[code]||0)+1;
+    refreshStats();
+    const ak=document.getElementById("key-"+code); if(ak){ak.classList.add("wrong");setTimeout(()=>ak.classList.remove("wrong"),300);}
+    const tc=targets[pos]&&document.querySelectorAll("#target .tchar")[pos];
+    if(tc){tc.classList.add("err");setTimeout(()=>tc.classList.remove("err"),280);}
+  }
+}
+function handlePlaceKey(code){
+  const tk=pTargets[pPos]; if(!tk)return;
+  const need=tk.keys[pSub];
+  if(code===need.code){ pTot++; pSub++; if(pSub>=tk.keys.length){pSub=0;pPos++;renderPTarget();if(pPos>=pTargets.length)finishPlacement();} }
+  else if(K[code]){ pTot++;pErrs++;const tc=document.querySelectorAll("#pTarget .tchar")[pPos]; if(tc)tc.classList.add("err"); }
+}
+
+/* completion */
+function completeDrill(){
+  if(timerId)clearInterval(timerId);timerId=null; if(metaOn){clearInterval(metaTimer);metaOn=false;}
+  const secs=startT?Math.max(1,Math.round((Date.now()-startT)/1000)):0;
+  const cpm=startT?Math.round(pos/(secs/60)):(pos*60/1);
+  const acc=tot?Math.round((tot-errs)/tot*100):100;
+  const net=Math.round(cpm*acc/100);
+  document.getElementById("resTitle").textContent=curMode==="placement"?"判定結果":(curMode==="stage"?("第"+(curStage+1)+"段 完了"):"自由練習 完了");
+  document.getElementById("resBig").textContent=cpm;
+  document.getElementById("resCpm").textContent=cpm;
+  document.getElementById("resAcc").textContent=acc+"%";
+  document.getElementById("resNet").textContent=net;
+  document.getElementById("resErrs").textContent=errs;
+  document.getElementById("resMeter").style.width=acc+"%";
+  // gate: acc>=95 unlocks next stage
+  let openNext=false;
+  if(curMode==="stage"){
+    openNext=acc>=95;
+    if(openNext){ markDone(curStage); }
+  }
+  const verdicts=[]; 
+  if(acc>=98)verdicts.push("正確さは完璧。"+(cpm>=12?"速度も良い感じ。":"テンポを上げましょう。"));
+  else if(acc>=95)verdicts.push(openNext?"合格！次のステージが開きました。":"合格です。");
+  else if(acc>=85)verdicts.push("あと少し。指をホームに戻して、ゆっくり正確に。");
+  else verdicts.push("焦らず1文字ずつ。正確さが先、速度は後からついてきます。");
+  if(openNext)verdicts.push("次: "+STAGES[curStage+1].t);
+  document.getElementById("resVerdict").textContent=verdicts.join(" ");
+  // record history
+  const h=load(); if(!Array.isArray(h.history))h.history=[];
+  h.history.push({d:new Date().toISOString().slice(0,10),cpm,acc,net,stage:curStage});
+  if(h.history.length>200)h.history=h.history.slice(-200); save(h);
+  document.getElementById("nextBtn").style.display=(openNext&&curStage+1<STAGES.length)?"inline-block":"none";
+  setView("results");
+}
+
+/* ---------- persistence ---------- */
+function load(){ try{return JSON.parse(localStorage.getItem("jisTutor")||"{}")||{};}catch(e){return{};} }
+function save(o){ const d=load(); Object.assign(d,o); localStorage.setItem("jisTutor",JSON.stringify(d)); }
+function markedDone(){ const d=load(); return d.done||[]; }
+function markDone(si){ const d=load(); const arr=d.done||[]; if(!arr.includes(si))arr.push(si); d.done=arr; save(d); }
+
+/* ================= RENDER HOME ================= */
+function renderHome(){
+  const done=markedDone(); const startStage=(load().startStage||0);
+  const ladder=document.getElementById("ladder"); ladder.innerHTML="";
+  STAGES.forEach((s,i)=>{
+    const isDone=done.includes(i);
+    const isOpen=i===0||done.includes(i-1)||i<=startStage;
+    const b=document.createElement("div"); b.className="stageb"+(isDone?" done":"")+(isOpen?"":" locked");
+    const keysmini=s.k.map(c=>K[c].kana).join(" ");
+    b.innerHTML=`<span class="num">${i+1}</span><span class="nm"><span class="keysmini">${keysmini}</span>${s.t}</span>`+
+      (isDone?`<span class="done-mark">✔</span>`:`<span class="tag">${isOpen?"開く":"未開放"}</span>`);
+    if(isOpen)b.addEventListener("click",()=>{ openStage(s,i); });
+    ladder.appendChild(b);
+  });
+  // stats
+  const d=load(); const h=d.history||[];
+  const totDone=done.length;
+  const best= h.length?h.reduce((m,x)=>x.net>m.net?x:m,h[0]).net:0;
+  document.getElementById("homeStats").innerHTML=
+    `<table class="prog"><tr><th>合格ステージ</th><th>最高正味</th><th>練習回数</th></tr>
+     <tr><td>${totDone} / ${STAGES.length}</td><td>${best}</td><td>${h.length}</td></tr></table>`;
+  renderGraph(h);
+}
+function openStage(s,i){
+  curStage=i; curMode="stage";
+  openStageChooser(i);
+}
+function openStageChooser(i){
+  setView("typing");
+  const drills=buildDrills(i);
+  // render a simple chooser in the hint area
+  const hint=document.getElementById("hint");
+  hint.innerHTML=`<div style="font-size:14px;margin-bottom:8px;color:var(--muted)">第${i+1}段 ・ 練習を選んでください：</div><div class="row" style="justify-content:center">`+
+    drills.map((d,di)=>`<button class="drillb" data-di="${di}">${d.name}（${d.kana.length}字）</button>`).join("")+`</div>`;
+  hint.querySelectorAll(".drillb").forEach(el=>el.addEventListener("click",()=>{startStageDrill(i,drills[+el.dataset.di].name);}));
+  // also clear target
+  document.getElementById("target").innerHTML=""; 
+}
+function renderGraph(h){
+  const el=document.getElementById("graph");
+  if(h.length<2){ el.innerHTML=`<div style="color:var(--muted);font-size:13px">まだデータがありません。練習すると推移が表示されます。</div>`; return; }
+  const recent=h.slice(-30); const max=Math.max(...recent.map(x=>x.cpm),1);
+  el.innerHTML=`<svg viewBox="0 0 620 130" width="100%" height="130">
+    <polyline fill="none" stroke="#2f6f5e" stroke-width="2" points="${recent.map((x,i)=>`${i*(620/(recent.length-1))},${120-x.cpm/max*100}`).join(" ")}"/>
+    <circle cx="${(recent.length-1)*(620/(recent.length-1))}" cy="${120-recent[recent.length-1].cpm/max*100}" r="3.5" fill="#2f6f5e"/>
+    <text x="8" y="119" fill="#8b867c" font-size="11">0</text>
+    <text x="8" y="18" fill="#8b867c" font-size="11">${max} CM</text>
+    <text x="300" y="130" fill="#8b867c" font-size="11" text-anchor="middle">練習回数 →</text>
+  </svg>`;
+}
+
+/* ================= KEYBOARD BUILD (reused) ================= */
+function buildKeyboard(containerId){
+  const kb=document.getElementById(containerId); kb.innerHTML="";
+  const rows=[
+    ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7","Digit8","Digit9","Digit0","Minus","Equal","IntlYen"],
+    ["KeyQ","KeyW","KeyE","KeyR","KeyT","KeyY","KeyU","KeyI","KeyO","KeyP","BracketLeft","BracketRight","Backslash"],
+    ["KeyA","KeyS","KeyD","KeyF","KeyG","KeyH","KeyJ","KeyK","KeyL","Semicolon","Quote"],
+    ["KeyZ","KeyX","KeyC","KeyV","KeyB","KeyN","KeyM","Comma","Period","Slash","IntlRo"],
+  ];
+  rows.forEach(r=>{ const row=document.createElement("div"); row.className="kbrow";
+    r.forEach(code=>{ if(!K[code])return; const k=K[code]; const key=document.createElement("div");
+      key.className="key"+(k.home?" home":""); key.id="key-"+code;
+      key.innerHTML=`<span class="fingerlab">${k.f}</span><span class="latin">${k.latin}</span><span class="kana">${k.kana}</span><span class="fingerdot" style="background:${FC[k.f]}"></span>`;
+      row.appendChild(key); }); kb.appendChild(row); });
+}
+
+/* ================= UI wiring ================= */
+document.getElementById("placementBtn").addEventListener("click",startPlacement);
+document.getElementById("freeBtn").addEventListener("click",()=>{ // free practice: pick any stage
+  // open a chooser for free: show all stages
+  curMode="free"; setView("typing");
+  const hint=document.getElementById("hint");
+  hint.innerHTML=`<div style="font-size:14px;margin-bottom:8px;color:var(--muted)">自由練習：ステージを選ぶ</div><div class="row" style="justify-content:center">`+
+    STAGES.map((s,i)=>`<button class="drillb" data-si="${i}">${i+1}・${s.t}</button>`).join("")+`</div>`;
+  hint.querySelectorAll(".drillb").forEach(el=>el.addEventListener("click",()=>{curMode="free";startStageDrill(+el.dataset.si,"新キー");}));
+  document.getElementById("target").innerHTML="";
+});
+document.getElementById("tBarrier").addEventListener("change",e=>barrier=e.target.checked);
+document.getElementById("tMeta").addEventListener("change",e=>{metronome=e.target.checked;});
+document.getElementById("tFinger").addEventListener("change",e=>fingerHint=e.target.checked);
+document.getElementById("restartBtn").addEventListener("click",()=>{ beginDrill(lastDrillStr); });
+document.getElementById("backBtn").addEventListener("click",()=>{ setView("home"); });
+document.getElementById("toggleKb").addEventListener("click",()=>{kbVisible=!kbVisible; renderTyping();});
+document.getElementById("againBtn").addEventListener("click",()=>{ beginDrill(lastDrillStr); });
+document.getElementById("nextBtn").addEventListener("click",()=>{ openStageChooser(curStage+1); });
+document.getElementById("resListBtn").addEventListener("click",()=>setView("home"));
+
+/* boot */
+renderHome(); setView("home");
+</script>
+</body>
+</html>
