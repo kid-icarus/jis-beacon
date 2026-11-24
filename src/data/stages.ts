@@ -18,7 +18,8 @@ export const STAGES: Stage[] = [
   { t: 'そ・ね（C / ,）', k: ['KeyC', 'Comma'] },
   { t: 'さ・る（X / .）', k: ['KeyX', 'Period'] },
   { t: 'つ・め（Z / /）', k: ['KeyZ', 'Slash'] },
-  { t: '数字の段', k: ['Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Digit1', 'Digit2', 'Minus'] },
+  { t: '数字① 左手（1〜5）', k: ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'] },
+  { t: '数字② 右手（6〜0）', k: ['Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus'] },
   { t: '濁音・半濁音・長音', k: ['BracketLeft', 'BracketRight', 'IntlYen', 'IntlRo', 'Equal', 'Backslash'] },
 ]
 
@@ -143,7 +144,7 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
 
 // Build a fresh, randomized drill for a stage + type. Random seed => can't memorize the pattern.
 export function makeDrill(stageIdx: number, name: string, seed: number): Drill {
-  const useVoiced = stageIdx >= 16
+  const useVoiced = stageIdx >= 17
   const rng = mulberry32(seed)
   let kanaStr = ''
   let words: WordInfo[] | undefined
@@ -168,7 +169,7 @@ export function makeDrill(stageIdx: number, name: string, seed: number): Drill {
 
 export function drillNames(stageIdx: number): string[] {
   const names = ['新キー', '混ぜる']
-  if (availWords(stageIdx, stageIdx >= 16).length) names.push('単語')
+  if (availWords(stageIdx, stageIdx >= 17).length) names.push('単語')
   return names
 }
 
